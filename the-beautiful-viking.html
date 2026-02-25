@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>THE BEAUTIFUL VIKING</title>
+<meta name="description" content="バイキングの盛り付けシミュレーションゲーム。制限時間内にトレイに料理を美しく盛り付けて、最高ランクを目指そう！">
+<meta property="og:title" content="THE BEAUTIFUL VIKING">
+<meta property="og:description" content="バイキングの盛り付けシミュレーションゲーム。制限時間内にトレイに料理を美しく盛り付けて、最高ランクを目指そう！">
+<meta property="og:image" content="https://paul13131313.github.io/the-beautiful-viking/ogp.png">
+<meta property="og:url" content="https://paul13131313.github.io/the-beautiful-viking/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="THE BEAUTIFUL VIKING">
+<meta name="twitter:description" content="バイキングの盛り付けシミュレーションゲーム">
+<meta name="twitter:image" content="https://paul13131313.github.io/the-beautiful-viking/ogp.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Noto+Sans+JP:wght@400;700;900&family=Bebas+Neue&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--gold:#C8A456;--gold-light:#E8D5A0;--cream:#FFF8EC;--dark:#1A1410;--red:#C0392B;--green:#27AE60;--blue:#2980B9}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--dark);color:var(--cream);overflow:hidden;height:100vh;width:100vw;user-select:none;-webkit-user-select:none;touch-action:none}
+
+/* TITLE */
+#title-screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#0D0A06,#1A1410 30%,#2C1E0F);z-index:1000;transition:opacity .8s}
+#title-screen.hidden{opacity:0;pointer-events:none}
+.title-glow{text-align:center;animation:titleFloat 3s ease-in-out infinite}
+@keyframes titleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.title-main{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,7vw,4.5rem);font-weight:900;color:var(--gold);text-shadow:0 0 40px rgba(200,164,86,.4),0 4px 8px rgba(0,0,0,.6);letter-spacing:.08em;line-height:1.1}
+.title-sub{font-family:'Bebas Neue',sans-serif;font-size:clamp(.9rem,2.5vw,1.3rem);color:var(--gold-light);letter-spacing:.3em;margin-top:12px;opacity:.7}
+.title-emoji{font-size:clamp(2rem,5vw,3.5rem);margin:24px 0}
+.stage-select{margin-top:30px;display:flex;flex-direction:column;gap:10px;width:min(85vw,360px);max-height:50vh;overflow-y:auto}
+.stage-btn{background:linear-gradient(135deg,rgba(200,164,86,.15),rgba(200,164,86,.05));border:1px solid rgba(200,164,86,.3);color:var(--cream);padding:14px 20px;border-radius:8px;font-family:'Noto Sans JP',sans-serif;font-size:.95rem;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .3s}
+.stage-btn:active{background:rgba(200,164,86,.25);transform:translateX(4px)}
+.stage-btn .sn{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:var(--gold);min-width:30px}
+.stage-btn .sname{flex:1}.stage-btn .se{font-size:1.4rem}
+
+/* GAME */
+#game-screen{display:none;height:100vh;width:100vw;flex-direction:column;background:#1a1a1a}
+#game-screen.active{display:flex}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:rgba(0,0,0,.6);border-bottom:1px solid rgba(200,164,86,.15);min-height:42px;flex-shrink:0}
+.stage-label{font-family:'Bebas Neue',sans-serif;font-size:.95rem;color:var(--gold);letter-spacing:.1em}
+.timer{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--cream);min-width:50px;text-align:center}
+.timer.warning{color:var(--red);animation:tp .5s infinite}
+@keyframes tp{50%{transform:scale(1.1)}}
+.score-preview{display:flex;gap:10px;font-size:.7rem}
+.score-item{text-align:center}
+.score-item .label{color:var(--gold-light);opacity:.7;font-size:.55rem}
+.score-item .value{font-family:'Bebas Neue',sans-serif;font-size:1rem}
+
+/* TRAY AREA */
+.tray-area{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;position:relative;min-height:0;background:repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(180,60,40,.04) 18px,rgba(180,60,40,.04) 19px),repeating-linear-gradient(90deg,transparent,transparent 18px,rgba(180,60,40,.04) 18px,rgba(180,60,40,.04) 19px),linear-gradient(180deg,#2a2218,#1e1a14)}
+
+.tray{position:relative;width:min(96vw,460px);aspect-ratio:5/4;max-height:54vh;border-radius:6px;background:repeating-linear-gradient(92deg,transparent,transparent 40px,rgba(0,0,0,.03) 40px,rgba(0,0,0,.03) 41px),linear-gradient(160deg,#C49A5C 0%,#B08840 20%,#A07830 40%,#9A7228 60%,#8B6620 80%,#A07830 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),inset 0 -2px 0 rgba(0,0,0,.2),0 8px 24px rgba(0,0,0,.5);overflow:visible}
+
+/* PLATES */
+.plate{position:absolute;border-radius:50%;cursor:pointer;transition:box-shadow .2s;overflow:visible}
+.plate.highlight{box-shadow:0 0 0 3px var(--gold),0 4px 20px rgba(200,164,86,.5) !important}
+.plate.plate-main{background:radial-gradient(ellipse at 38% 32%,#fff 0%,#FAFAF8 20%,#F2F0EC 45%,#E8E4DC 70%,#DCD8CE 100%);border:3px solid #E0DCD4;box-shadow:inset 0 -8px 16px rgba(0,0,0,.06),inset 0 4px 8px rgba(255,255,255,.8),0 4px 12px rgba(0,0,0,.25)}
+.plate.plate-main::before{content:'';position:absolute;inset:14%;border-radius:50%;border:1px solid rgba(0,0,0,.05);pointer-events:none}
+.plate.plate-side{background:radial-gradient(ellipse at 38% 32%,#fff 0%,#F8F6F2 25%,#EDEBE6 55%,#E0DCD4 100%);border:2px solid #DDD9D0;box-shadow:inset 0 -6px 12px rgba(0,0,0,.05),inset 0 3px 6px rgba(255,255,255,.7),0 3px 8px rgba(0,0,0,.2)}
+.plate.plate-side::before{content:'';position:absolute;inset:16%;border-radius:50%;border:1px solid rgba(0,0,0,.04);pointer-events:none}
+.plate.plate-bowl{background:radial-gradient(ellipse at 40% 35%,#DEB87A 0%,#C49A5C 40%,#A07830 80%,#8B6620 100%);border:2px solid #7A5A18;box-shadow:inset 0 -10px 18px rgba(0,0,0,.3),inset 0 4px 8px rgba(255,220,160,.25),0 3px 8px rgba(0,0,0,.25)}
+.plate.plate-dessert{background:radial-gradient(ellipse at 35% 30%,#fff 0%,#FDFCFA 25%,#F5F2EE 55%,#ECE8E0 100%);border:2px solid #D8D4CC;box-shadow:inset 0 -4px 8px rgba(0,0,0,.04),inset 0 2px 4px rgba(255,255,255,.7),0 2px 6px rgba(0,0,0,.15)}
+.plate.plate-dessert::before{content:'';position:absolute;inset:4px;border-radius:50%;border:1.5px solid rgba(200,164,86,.25);pointer-events:none}
+.plate.plate-glass{border-radius:6px 6px 40% 40%;background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.06));border:1.5px solid rgba(255,255,255,.2);box-shadow:inset 0 0 10px rgba(255,255,255,.04),inset -4px 0 8px rgba(255,255,255,.06),0 2px 6px rgba(0,0,0,.2)}
+.plate.plate-glass::before{content:'';position:absolute;top:10%;left:15%;width:20%;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.2),transparent);border-radius:50%;pointer-events:none}
+/* Glass uses different aspect */
+.plate.plate-glass .plate-inner{width:100%;height:100%}
+
+.plate-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.45rem;color:rgba(0,0,0,.15);pointer-events:none;white-space:nowrap;text-align:center;line-height:1.3}
+.plate.plate-bowl .plate-label,.plate.plate-glass .plate-label{color:rgba(255,255,255,.2)}
+
+/* FOOD */
+.food-on-plate{position:absolute;line-height:1;cursor:grab;z-index:2;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));transform:translate(-50%,-50%);touch-action:none}
+.food-on-plate.dragging{z-index:100;cursor:grabbing;filter:drop-shadow(0 6px 12px rgba(0,0,0,.4));transform:translate(-50%,-50%) scale(1.15)}
+.food-on-plate.food-place-anim{animation:foodDrop .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes foodDrop{0%{opacity:.3;filter:drop-shadow(0 8px 16px rgba(0,0,0,.3))}100%{opacity:1}}
+
+/* Tray direct items */
+.tray-food{position:absolute;line-height:1;cursor:grab;z-index:10;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35));transform:translate(-50%,-50%);touch-action:none}
+.tray-food.dragging{z-index:200;cursor:grabbing;filter:drop-shadow(0 8px 16px rgba(0,0,0,.5));transform:translate(-50%,-50%) scale(1.15)}
+.tray-food.food-place-anim{animation:foodDrop .3s cubic-bezier(.34,1.56,.64,1)}
+
+/* FOOD PANEL */
+.food-panel{flex-shrink:0;background:rgba(0,0,0,.75);border-top:1px solid rgba(200,164,86,.15);padding:6px 10px 12px}
+.food-categories{display:flex;gap:5px;margin-bottom:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.food-categories::-webkit-scrollbar{display:none}
+.cat-btn{background:rgba(200,164,86,.1);border:1px solid rgba(200,164,86,.2);color:var(--gold-light);padding:4px 10px;border-radius:20px;font-size:.7rem;white-space:nowrap;cursor:pointer;transition:all .2s;font-family:'Noto Sans JP',sans-serif}
+.cat-btn.active{background:var(--gold);color:var(--dark);border-color:var(--gold);font-weight:700}
+.food-grid{display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
+.food-grid::-webkit-scrollbar{display:none}
+.food-item{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 10px;cursor:pointer;transition:all .2s;min-width:64px;flex-shrink:0;position:relative}
+.food-item.selected{background:rgba(200,164,86,.3);border-color:var(--gold);box-shadow:0 0 8px rgba(200,164,86,.3)}
+.food-item:active{transform:scale(.92)}
+.food-item .emoji{font-size:2rem;line-height:1}
+.food-item .fname{font-size:.55rem;color:var(--gold-light);opacity:.8;white-space:nowrap}
+.food-item .vessel-tag{position:absolute;top:2px;right:2px;font-size:.4rem;background:rgba(0,0,0,.4);color:var(--gold-light);padding:1px 3px;border-radius:4px;opacity:.7}
+
+/* Buttons */
+.action-btns{position:absolute;bottom:132px;left:0;right:0;display:flex;justify-content:space-between;padding:0 12px;z-index:100;pointer-events:none}
+.action-btns>*{pointer-events:auto}
+.undo-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:var(--cream);padding:7px 14px;border-radius:20px;font-size:.75rem;cursor:pointer}
+.undo-btn:active{background:rgba(255,255,255,.2)}
+.done-btn{background:linear-gradient(135deg,var(--gold),#A08030);color:var(--dark);border:none;padding:9px 20px;border-radius:24px;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.1em;cursor:pointer;box-shadow:0 4px 16px rgba(200,164,86,.4)}
+.done-btn:active{transform:scale(.95)}
+
+.trash-zone{position:absolute;bottom:132px;left:50%;transform:translateX(-50%);background:rgba(192,57,43,.15);border:2px dashed rgba(192,57,43,.4);border-radius:12px;padding:6px 20px;font-size:.75rem;color:rgba(192,57,43,.7);z-index:50;opacity:0;transition:opacity .2s;pointer-events:none}
+.trash-zone.visible{opacity:1}
+
+/* Toast */
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(192,57,43,.9);color:#fff;padding:8px 18px;border-radius:8px;font-size:.8rem;z-index:500;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+/* RESULT */
+#result-screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,8,4,.95);z-index:2000;padding:24px}
+#result-screen.active{display:flex}
+#ending-screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#0D0A06,#1A1410 30%,#2C1E0F);z-index:3000}
+#ending-screen.active{display:flex}
+.stage-btn.locked{opacity:.35;cursor:not-allowed;border-color:rgba(200,164,86,.1)}
+.result-card{background:linear-gradient(145deg,#2C1E0F,#1A1410);border:2px solid var(--gold);border-radius:16px;padding:24px 20px;text-align:center;width:min(90vw,380px);animation:ra .6s cubic-bezier(.34,1.56,.64,1);max-height:90vh;overflow-y:auto}
+@keyframes ra{0%{transform:scale(.5) rotateX(20deg);opacity:0}100%{transform:scale(1) rotateX(0);opacity:1}}
+.result-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold-light);margin-bottom:8px}
+.result-rank{font-family:'Bebas Neue',sans-serif;font-size:4.5rem;line-height:1;margin:8px 0;background:linear-gradient(180deg,#FFD700,#C8A456,#8B6914);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.result-scores{display:flex;justify-content:center;gap:20px;margin:16px 0}
+.result-score-item{text-align:center}
+.rs-label{font-size:.7rem;color:var(--gold-light);opacity:.7;margin-bottom:4px}
+.rs-bar-bg{width:60px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin:0 auto 4px}
+.rs-bar{height:100%;border-radius:3px;transition:width 1s ease}
+.rs-bar.nutrition{background:var(--green)}.rs-bar.beauty{background:var(--gold)}.rs-bar.time-bar{background:var(--blue)}
+.rs-value{font-family:'Bebas Neue',sans-serif;font-size:1.4rem}
+.result-total{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--gold-light);margin:4px 0 12px;opacity:.8}
+.result-comment{font-size:.85rem;color:var(--cream);margin-bottom:20px;line-height:1.6;opacity:.9;white-space:pre-line}
+.result-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.result-btn{background:rgba(200,164,86,.15);border:1px solid rgba(200,164,86,.3);color:var(--cream);padding:11px 16px;border-radius:8px;font-family:'Noto Sans JP',sans-serif;font-size:.82rem;cursor:pointer}
+.result-btn:active{background:var(--gold);color:var(--dark)}
+.result-btn.primary{background:var(--gold);color:var(--dark);font-weight:700}
+/* Result tray - clone of actual tray, scaled down */
+.result-tray-wrapper{
+  width:min(75vw,300px);margin:0 auto 16px;
+  border-radius:8px;overflow:hidden;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  position:relative;
+}
+.result-tray-wrapper .tray-clone{
+  transform-origin:top left;
+  pointer-events:none;
+}
+
+/* Share buttons */
+.share-row{display:flex;gap:6px;width:100%;margin-bottom:8px}
+.share-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 6px;border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer;border:none;font-family:'Noto Sans JP',sans-serif;transition:all .2s;white-space:nowrap}
+.share-btn:active{transform:scale(.95)}
+.share-btn:disabled{opacity:.4;cursor:not-allowed}
+.share-x{background:#000;color:#fff}
+.share-ig{background:linear-gradient(135deg,#833AB4,#E1306C,#F77737);color:#fff}
+.share-line{background:#06C755;color:#fff}
+.share-fb{background:#1877F2;color:#fff}
+.share-save{background:linear-gradient(135deg,var(--gold),#A08030);color:var(--dark)}
+.share-copy{background:rgba(200,164,86,.2);color:var(--gold);border:1px solid rgba(200,164,86,.3)}
+
+.tutorial{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:3000;padding:20px}
+.tutorial.active{display:flex}
+.tutorial-card{background:var(--dark);border:1px solid var(--gold);border-radius:12px;padding:24px;max-width:340px;text-align:center}
+.tutorial-card h3{font-family:'Playfair Display',serif;color:var(--gold);margin-bottom:12px}
+.tutorial-card p{font-size:.82rem;line-height:1.7;margin-bottom:16px;color:var(--cream);opacity:.9}
+.tutorial-card .close-tut{background:var(--gold);color:var(--dark);border:none;padding:10px 28px;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="title-screen">
+  <div class="title-glow"><div class="title-main">THE<br>BEAUTIFUL<br>VIKING</div><div class="title-sub">盛り付けシミュレーション</div></div>
+  <div class="title-emoji">🍽️✨🏆</div>
+  <div class="stage-select" id="stage-select"></div>
+</div>
+<div id="game-screen">
+  <div class="top-bar">
+    <div class="stage-label" id="stage-label"></div>
+    <div class="timer" id="timer">60</div>
+    <div class="score-preview">
+      <div class="score-item"><div class="label">栄養</div><div class="value" id="live-nutrition">0</div></div>
+      <div class="score-item"><div class="label">美</div><div class="value" id="live-beauty">0</div></div>
+    </div>
+  </div>
+  <div class="tray-area">
+    <div class="tray" id="tray"></div>
+    <div class="trash-zone" id="trash-zone">🗑 離して削除</div>
+  </div>
+  <div class="action-btns">
+    <button class="undo-btn" onclick="undoLast()">↩ 戻す</button>
+    <button class="done-btn" id="done-btn">FINISH ✨</button>
+  </div>
+  <div class="food-panel">
+    <div class="food-categories" id="food-categories"></div>
+    <div class="food-grid" id="food-grid"></div>
+  </div>
+</div>
+<div id="result-screen">
+  <div class="result-card">
+    <div class="result-title">— RESULT —</div>
+    <div class="result-tray-wrapper" id="result-tray-wrapper"></div>
+    <div class="result-rank" id="result-rank">A</div>
+    <div class="result-scores" id="result-scores"></div>
+    <div class="result-total" id="result-total"></div>
+    <div class="result-comment" id="result-comment"></div>
+    <div class="result-btns" id="result-btns"></div>
+  </div>
+</div>
+<div id="ending-screen"></div>
+<div class="tutorial" id="tutorial">
+  <div class="tutorial-card">
+    <h3>HOW TO PLAY</h3>
+    <p>🍖 下のメニューから料理をタップして選択<br>🍽️ お皿やトレイをタップして配置！<br>👆 置いた料理はドラッグで自由に移動<br>🍜 器付きの料理はトレイに直置き<br>🥦 野菜やフルーツはお皿にも直置きにもOK<br>🎨 栄養・美しさ・タイムの3軸で評価<br>🏆 Aランク以上でクリア→次のステージへ！<br>👑 全ステージ制覇でバイキング王！</p>
+    <button class="close-tut" onclick="closeTutorial()">OK!</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STAGES =====
+const ALL_CATS=null; // null = all categories available
+const STAGES=[
+  {id:1,name:'学食',emoji:'🏫',time:70,plates:['main','side'],
+   cats:['肉料理','ごはん・パン','野菜・付け合わせ','汁物・煮込み']},
+  {id:2,name:'社食',emoji:'🏢',time:75,plates:['main','side','side'],
+   cats:['肉料理','魚介','ごはん・パン','野菜・付け合わせ','汁物・煮込み','卵・豆腐']},
+  {id:3,name:'ビジネスホテル',emoji:'🏨',time:80,plates:['main','side','dessert'],
+   cats:['肉料理','魚介','ごはん・パン','麺類','サラダ','野菜・付け合わせ','汁物・煮込み','卵・豆腐','デザート','飲み物']},
+  {id:4,name:'シティホテル',emoji:'🏙️',time:85,plates:['main','main','side','dessert'],
+   cats:['肉料理','魚介','ごはん・パン','麺類','サラダ','野菜・付け合わせ','汁物・煮込み','卵・豆腐','デザート','フルーツ','飲み物']},
+  {id:5,name:'リゾートホテル',emoji:'🌴',time:90,plates:['main','main','side','side','dessert'],
+   cats:ALL_CATS},
+  {id:6,name:'ラスベガス',emoji:'🎰',time:100,plates:['main','main','main','side','side','dessert'],
+   cats:ALL_CATS},
+];
+
+// Plate layout: x,y = top-left position (% of tray), s = size as % of tray HEIGHT (so circles are always round)
+const TRAY_LAYOUTS={
+  2:[
+    {t:'main',x:3,y:5,s:55},
+    {t:'side',x:55,y:8,s:42},
+  ],
+  3:[
+    {t:'main',x:3,y:3,s:50},
+    {t:'side',x:52,y:2,s:38},
+    {t:'side',x:30,y:55,s:36},
+  ],
+  4:[
+    {t:'main',x:2,y:2,s:48},
+    {t:'main',x:48,y:2,s:42},
+    {t:'side',x:3,y:55,s:36},
+    {t:'dessert',x:45,y:55,s:34},
+  ],
+  5:[
+    {t:'main',x:2,y:2,s:46},
+    {t:'main',x:42,y:2,s:42},
+    {t:'side',x:2,y:52,s:34},
+    {t:'side',x:35,y:54,s:32},
+    {t:'dessert',x:66,y:52,s:30},
+  ],
+  6:[
+    {t:'main',x:1,y:1,s:40},
+    {t:'main',x:30,y:1,s:40},
+    {t:'main',x:60,y:1,s:36},
+    {t:'side',x:1,y:50,s:32},
+    {t:'side',x:28,y:52,s:30},
+    {t:'dessert',x:56,y:52,s:30},
+  ],
+};
+
+const PM={
+  main:{label:'メイン',cls:'plate-main'},
+  side:{label:'サイド',cls:'plate-side'},
+  dessert:{label:'デザート',cls:'plate-dessert'},
+};
+
+// ===== FOOD DATA =====
+// vessel: 'plate'=器なし(皿に盛る), 'tray'=器付き(トレイ直置き), 'any'=どこでもOK
+// size: 実サイズ比 (1.0≈皿上の主菜, 0.4=小粒, 1.5=丼サイズ)
+const FOOD_DATA={
+  '肉料理':{emoji:'🥩',items:[
+    {emoji:'🥩',name:'ステーキ',group:'protein',color:'red',beauty:5,vessel:'plate',size:2.5},
+    {emoji:'🍖',name:'骨つきチキン',group:'protein',color:'warm',beauty:4,vessel:'plate',size:2.4},
+    {emoji:'🍗',name:'から揚げ',group:'protein',color:'warm',beauty:3,vessel:'plate',size:1.0},
+    {emoji:'🌭',name:'ソーセージ',group:'protein',color:'warm',beauty:2,vessel:'plate',size:1.2},
+    {emoji:'🥓',name:'ベーコン',group:'protein',color:'red',beauty:3,vessel:'plate',size:1.4},
+    {emoji:'🍔',name:'ハンバーグ',group:'protein',color:'warm',beauty:4,vessel:'plate',size:2.0},
+    {emoji:'🧆',name:'コロッケ',group:'protein',color:'warm',beauty:3,vessel:'plate',size:1.2},
+    {emoji:'🫔',name:'春巻き',group:'protein',color:'warm',beauty:3,vessel:'plate',size:1.3},
+    {emoji:'🥟',name:'餃子',group:'protein',color:'warm',beauty:4,vessel:'plate',size:0.8},
+    {emoji:'🍢',name:'焼き鳥',group:'protein',color:'warm',beauty:3,vessel:'tray',size:1.6},
+  ]},
+  '魚介':{emoji:'🐟',items:[
+    {emoji:'🐟',name:'焼き魚',group:'protein',color:'neutral',beauty:4,vessel:'plate',size:2.4},
+    {emoji:'🍤',name:'エビフライ',group:'protein',color:'warm',beauty:5,vessel:'plate',size:1.8},
+    {emoji:'🦐',name:'ボイルエビ',group:'protein',color:'red',beauty:5,vessel:'plate',size:1.0},
+    {emoji:'🍣',name:'寿司',group:'protein',color:'red',beauty:5,vessel:'tray',size:1.4},
+    {emoji:'🐙',name:'たこ焼き',group:'protein',color:'warm',beauty:3,vessel:'plate',size:0.9},
+    {emoji:'🦪',name:'牡蠣',group:'protein',color:'neutral',beauty:4,vessel:'plate',size:1.0},
+    {emoji:'🦑',name:'イカリング',group:'protein',color:'white',beauty:3,vessel:'plate',size:1.2},
+    {emoji:'🦀',name:'カニ',group:'protein',color:'red',beauty:5,vessel:'plate',size:2.5},
+  ]},
+  'ごはん・パン':{emoji:'🍚',items:[
+    {emoji:'🍚',name:'白ごはん',group:'carb',color:'white',beauty:2,vessel:'tray',size:2.2},
+    {emoji:'🍛',name:'カレーライス',group:'carb',color:'warm',beauty:3,vessel:'tray',size:3.2},
+    {emoji:'🍙',name:'おにぎり',group:'carb',color:'white',beauty:3,vessel:'tray',size:1.4},
+    {emoji:'🍕',name:'ピザ',group:'carb',color:'warm',beauty:3,vessel:'tray',size:2.4},
+    {emoji:'🥐',name:'クロワッサン',group:'carb',color:'warm',beauty:4,vessel:'tray',size:1.6},
+    {emoji:'🍞',name:'トースト',group:'carb',color:'warm',beauty:2,vessel:'tray',size:1.6},
+    {emoji:'🥖',name:'バゲット',group:'carb',color:'warm',beauty:3,vessel:'tray',size:2.0},
+    {emoji:'🧇',name:'ワッフル',group:'carb',color:'warm',beauty:4,vessel:'plate',size:1.6},
+    {emoji:'🥞',name:'パンケーキ',group:'carb',color:'warm',beauty:4,vessel:'tray',size:2.2},
+    {emoji:'🥯',name:'ベーグル',group:'carb',color:'warm',beauty:3,vessel:'tray',size:1.4},
+    {emoji:'🫓',name:'ナン',group:'carb',color:'warm',beauty:3,vessel:'tray',size:2.0},
+  ]},
+  '麺類':{emoji:'🍜',items:[
+    {emoji:'🍜',name:'ラーメン',group:'carb',color:'warm',beauty:3,vessel:'tray',size:3.2},
+    {emoji:'🍝',name:'パスタ',group:'carb',color:'warm',beauty:4,vessel:'tray',size:2.8},
+    {emoji:'🍲',name:'うどん',group:'carb',color:'white',beauty:3,vessel:'tray',size:3.2},
+    {emoji:'🥡',name:'焼きそば',group:'carb',color:'warm',beauty:2,vessel:'tray',size:1.8},
+    {emoji:'🍥',name:'そば',group:'carb',color:'neutral',beauty:3,vessel:'tray',size:2.6},
+    {emoji:'🫕',name:'フォー',group:'carb',color:'white',beauty:4,vessel:'tray',size:3.2},
+  ]},
+  'サラダ':{emoji:'🥗',items:[
+    {emoji:'🥗',name:'グリーンサラダ',group:'veggie',color:'green',beauty:5,vessel:'tray',size:2.6},
+    {emoji:'🥙',name:'シーザーサラダ',group:'veggie',color:'green',beauty:5,vessel:'tray',size:2.2},
+    {emoji:'🫛',name:'豆サラダ',group:'veggie',color:'green',beauty:4,vessel:'plate',size:1.2},
+    {emoji:'🧅',name:'オニオンサラダ',group:'veggie',color:'white',beauty:3,vessel:'plate',size:1.2},
+    {emoji:'🫒',name:'オリーブ',group:'veggie',color:'green',beauty:4,vessel:'any',size:0.6},
+    {emoji:'🌮',name:'タコサラダ',group:'veggie',color:'warm',beauty:4,vessel:'tray',size:1.8},
+    {emoji:'🥑',name:'アボカドサラダ',group:'veggie',color:'green',beauty:5,vessel:'plate',size:1.4},
+  ]},
+  '野菜・付け合わせ':{emoji:'🥦',items:[
+    {emoji:'🥦',name:'ブロッコリー',group:'veggie',color:'green',beauty:4,vessel:'any',size:1.0},
+    {emoji:'🌽',name:'コーン',group:'veggie',color:'warm',beauty:3,vessel:'any',size:1.2},
+    {emoji:'🍅',name:'トマト',group:'veggie',color:'red',beauty:5,vessel:'any',size:1.0},
+    {emoji:'🥕',name:'にんじんグラッセ',group:'veggie',color:'warm',beauty:4,vessel:'any',size:0.8},
+    {emoji:'🥒',name:'ピクルス',group:'veggie',color:'green',beauty:3,vessel:'any',size:0.8},
+    {emoji:'🫑',name:'パプリカ',group:'veggie',color:'red',beauty:4,vessel:'any',size:1.0},
+    {emoji:'🍆',name:'焼きナス',group:'veggie',color:'purple',beauty:3,vessel:'plate',size:1.6},
+    {emoji:'🧄',name:'ガーリック',group:'veggie',color:'white',beauty:2,vessel:'any',size:0.5},
+    {emoji:'🥬',name:'レタス',group:'veggie',color:'green',beauty:3,vessel:'any',size:1.2},
+    {emoji:'🥔',name:'ポテトフライ',group:'veggie',color:'warm',beauty:2,vessel:'plate',size:1.4},
+    {emoji:'🍠',name:'焼き芋',group:'veggie',color:'warm',beauty:3,vessel:'plate',size:1.6},
+  ]},
+  '汁物・煮込み':{emoji:'🥣',items:[
+    {emoji:'🥣',name:'味噌汁',group:'soup',color:'warm',beauty:3,vessel:'tray',size:2.4},
+    {emoji:'🍵',name:'お吸い物',group:'soup',color:'neutral',beauty:4,vessel:'tray',size:2.0},
+    {emoji:'🫕',name:'シチュー',group:'soup',color:'warm',beauty:3,vessel:'tray',size:2.8},
+    {emoji:'🥘',name:'煮物',group:'veggie',color:'warm',beauty:3,vessel:'tray',size:2.4},
+    {emoji:'🍲',name:'ポトフ',group:'soup',color:'warm',beauty:3,vessel:'tray',size:3.0},
+    {emoji:'🫗',name:'コーンスープ',group:'soup',color:'warm',beauty:4,vessel:'tray',size:2.0},
+    {emoji:'🧈',name:'冷奴',group:'protein',color:'white',beauty:4,vessel:'plate',size:1.2},
+  ]},
+  '卵・豆腐':{emoji:'🥚',items:[
+    {emoji:'🥚',name:'ゆで卵',group:'protein',color:'white',beauty:3,vessel:'any',size:0.8},
+    {emoji:'🍳',name:'目玉焼き',group:'protein',color:'warm',beauty:4,vessel:'plate',size:1.6},
+    {emoji:'🧀',name:'チーズ',group:'protein',color:'warm',beauty:3,vessel:'any',size:0.8},
+    {emoji:'🫘',name:'煮豆',group:'protein',color:'warm',beauty:2,vessel:'plate',size:0.8},
+  ]},
+  'デザート':{emoji:'🍰',items:[
+    {emoji:'🍰',name:'ショートケーキ',group:'dessert',color:'pastel',beauty:5,vessel:'tray',size:1.8},
+    {emoji:'🍮',name:'プリン',group:'dessert',color:'warm',beauty:4,vessel:'tray',size:1.4},
+    {emoji:'🍨',name:'アイスクリーム',group:'dessert',color:'pastel',beauty:4,vessel:'tray',size:1.6},
+    {emoji:'🧁',name:'カップケーキ',group:'dessert',color:'pastel',beauty:5,vessel:'tray',size:1.2},
+    {emoji:'🍩',name:'ドーナツ',group:'dessert',color:'warm',beauty:3,vessel:'tray',size:1.4},
+    {emoji:'🍪',name:'クッキー',group:'dessert',color:'warm',beauty:3,vessel:'tray',size:0.8},
+    {emoji:'🥮',name:'月餅',group:'dessert',color:'warm',beauty:3,vessel:'tray',size:1.2},
+    {emoji:'🍫',name:'チョコレート',group:'dessert',color:'dark',beauty:4,vessel:'tray',size:1.0},
+    {emoji:'🍡',name:'団子',group:'dessert',color:'pastel',beauty:4,vessel:'tray',size:1.4},
+    {emoji:'🍧',name:'かき氷',group:'dessert',color:'pastel',beauty:4,vessel:'tray',size:2.0},
+  ]},
+  'フルーツ':{emoji:'🍓',items:[
+    {emoji:'🍓',name:'いちご',group:'fruit',color:'red',beauty:5,vessel:'any',size:0.7},
+    {emoji:'🍊',name:'みかん',group:'fruit',color:'warm',beauty:4,vessel:'any',size:1.0},
+    {emoji:'🍇',name:'ぶどう',group:'fruit',color:'purple',beauty:5,vessel:'any',size:1.0},
+    {emoji:'🍈',name:'メロン',group:'fruit',color:'green',beauty:5,vessel:'plate',size:1.8},
+    {emoji:'🍉',name:'すいか',group:'fruit',color:'red',beauty:4,vessel:'plate',size:2.0},
+    {emoji:'🥝',name:'キウイ',group:'fruit',color:'green',beauty:4,vessel:'any',size:0.7},
+    {emoji:'🍑',name:'もも',group:'fruit',color:'pastel',beauty:5,vessel:'any',size:1.0},
+    {emoji:'🍍',name:'パイナップル',group:'fruit',color:'warm',beauty:4,vessel:'plate',size:1.8},
+    {emoji:'🫐',name:'ブルーベリー',group:'fruit',color:'purple',beauty:5,vessel:'any',size:0.4},
+    {emoji:'🍌',name:'バナナ',group:'fruit',color:'warm',beauty:3,vessel:'tray',size:1.4},
+  ]},
+  '飲み物':{emoji:'☕',items:[
+    {emoji:'☕',name:'コーヒー',group:'drink',color:'dark',beauty:3,vessel:'tray',size:1.6},
+    {emoji:'🍵',name:'緑茶',group:'drink',color:'green',beauty:3,vessel:'tray',size:1.4},
+    {emoji:'🧃',name:'オレンジジュース',group:'drink',color:'warm',beauty:2,vessel:'tray',size:1.4},
+    {emoji:'🥛',name:'牛乳',group:'drink',color:'white',beauty:2,vessel:'tray',size:1.6},
+    {emoji:'🧋',name:'タピオカ',group:'drink',color:'dark',beauty:3,vessel:'tray',size:1.8},
+    {emoji:'🍷',name:'ワイン',group:'drink',color:'red',beauty:5,vessel:'tray',size:1.8},
+    {emoji:'🍺',name:'ビール',group:'drink',color:'warm',beauty:3,vessel:'tray',size:2.2},
+    {emoji:'🥤',name:'スムージー',group:'drink',color:'green',beauty:4,vessel:'tray',size:1.8},
+    {emoji:'🫖',name:'紅茶',group:'drink',color:'warm',beauty:4,vessel:'tray',size:1.8},
+  ]},
+};
+
+// STATE
+let currentStage=null,timeLeft=0,timerInterval=null;
+let selectedFood=null,plateContents=[],trayFoods=[],gameActive=false,firstPlay=true,undoStack=[];
+let dragState=null;
+let unlockedStage=parseInt(localStorage.getItem('viking_unlock')||'1');
+
+function init(){renderStageSelect()}
+function renderStageSelect(){
+  document.getElementById('stage-select').innerHTML=STAGES.map(s=>{
+    const locked=s.id>unlockedStage;
+    const cleared=s.id<unlockedStage;
+    return`<button class="stage-btn${locked?' locked':''}" onclick="${locked?'':(`startStage(${s.id})`)}">
+      <span class="sn">${locked?'🔒':s.id}</span>
+      <span class="sname">${s.name}${cleared?' ✓':''}</span>
+      <span class="se">${s.emoji}</span>
+    </button>`;
+  }).join('');
+}
+function showTutorial(){document.getElementById('tutorial').classList.add('active')}
+function closeTutorial(){document.getElementById('tutorial').classList.remove('active');firstPlay=false}
+
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1500);
+}
+
+function canPlace(food,target){
+  const v=food.vessel;
+  if(v==='any')return true;
+  if(v==='tray')return target==='tray'; // has its own container, tray only
+  if(v==='plate')return target!=='tray'; // bare food, any plate/bowl/glass ok
+  return true;
+}
+
+function startStage(id){
+  currentStage=STAGES.find(s=>s.id===id);
+  if(!currentStage)return;
+  plateContents=currentStage.plates.map(type=>({type,foods:[]}));
+  trayFoods=[];selectedFood=null;currentCategory=null;timeLeft=currentStage.time;gameActive=true;undoStack=[];
+  document.getElementById('title-screen').classList.add('hidden');
+  setTimeout(()=>{
+    document.getElementById('game-screen').classList.add('active');
+    document.getElementById('stage-label').textContent=`STAGE ${currentStage.id} · ${currentStage.name} ${currentStage.emoji}`;
+    document.getElementById('timer').textContent=timeLeft;
+    document.getElementById('timer').classList.remove('warning');
+    // Wait for layout before rendering plates (need tray dimensions)
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      renderTray();renderFoodPanel();updateLiveScores();
+    }));
+    clearInterval(timerInterval);timerInterval=setInterval(tick,1000);
+    if(firstPlay)showTutorial();
+  },400);
+}
+
+function tick(){
+  if(!gameActive)return;timeLeft--;
+  const el=document.getElementById('timer');el.textContent=timeLeft;
+  if(timeLeft<=10)el.classList.add('warning');
+  if(timeLeft<=0)finishGame();
+}
+
+// ===== RENDER =====
+function renderTray(){
+  const tray=document.getElementById('tray');tray.innerHTML='';
+  const layout=TRAY_LAYOUTS[currentStage.plates.length]||TRAY_LAYOUTS[4];
+
+  // Tray click handler for direct placement
+  tray.onclick=(e)=>{
+    if(e.target!==tray)return;
+    if(!selectedFood||!gameActive)return;
+    if(!canPlace(selectedFood,'tray')){toast('🚫 この食材はお皿に盛ろう！');return}
+    const rect=tray.getBoundingClientRect();
+    const x=((e.clientX-rect.left)/rect.width)*100;
+    const y=((e.clientY-rect.top)/rect.height)*100;
+    const maxZ=Math.max(10,...trayFoods.map(f=>f.z||10));
+    trayFoods.push({...selectedFood,x,y,z:maxZ+1,fresh:true});
+    undoStack.push({action:'addTray',fi:trayFoods.length-1});
+    renderTray();updateLiveScores();
+  };
+
+  // Render plates - use tray actual size for correct proportions
+  const trayRect=tray.getBoundingClientRect();
+  const tW=trayRect.width||300, tH=trayRect.height||240;
+
+  // Base unit: trayHeight * 0.16 = size 1.0
+  // Real tray ≈ 35cm tall. size 1.0 ≈ 5.6cm item. Ramen bowl ≈ 18cm = size 3.2
+  const baseUnit=tH*0.16;
+
+  plateContents.forEach((plate,pi)=>{
+    const meta=PM[plate.type];
+    const pos=layout[pi];
+    const el=document.createElement('div');
+    el.className=`plate ${meta.cls}`;
+    if(selectedFood&&canPlace(selectedFood,plate.type))el.classList.add('highlight');
+
+    // Position as % of tray
+    el.style.left=pos.x+'%';
+    el.style.top=pos.y+'%';
+
+    // Size: s is % of tray height -> make width = height for circles
+    const sizePx=tH*(pos.s/100);
+    el.style.width=sizePx+'px';
+    el.style.height=sizePx+'px';
+    el.addEventListener('click',(e)=>{
+      if(e.target!==el&&!e.target.classList.contains('plate-label'))return;
+      onPlateClick(pi);
+    });
+    plate.foods.forEach((food,fi)=>{
+      const span=document.createElement('span');
+      span.className='food-on-plate';
+      if(food.fresh){span.classList.add('food-place-anim');food.fresh=false}
+      span.textContent=food.emoji;
+      span.style.left=food.x+'%';span.style.top=food.y+'%';span.style.zIndex=food.z||fi+2;
+      span.style.fontSize=Math.round(baseUnit*(food.size||1))+'px';
+      span.addEventListener('pointerdown',(e)=>startDragPlate(e,pi,fi,span));
+      el.appendChild(span);
+    });
+    if(!plate.foods.length){
+      const lbl=document.createElement('span');lbl.className='plate-label';lbl.textContent=meta.label;
+      el.appendChild(lbl);
+    }
+    tray.appendChild(el);
+  });
+
+  // Render tray direct foods
+  trayFoods.forEach((food,fi)=>{
+    const span=document.createElement('span');
+    span.className='tray-food';
+    if(food.fresh){span.classList.add('food-place-anim');food.fresh=false}
+    span.textContent=food.emoji;
+    span.style.left=food.x+'%';span.style.top=food.y+'%';span.style.zIndex=food.z||10;
+    span.style.fontSize=Math.round(baseUnit*(food.size||1))+'px';
+    span.addEventListener('pointerdown',(e)=>startDragTray(e,fi,span));
+    tray.appendChild(span);
+  });
+}
+
+// ===== DRAG (plate foods) =====
+function startDragPlate(e,pi,fi,el){
+  if(!gameActive)return;e.preventDefault();e.stopPropagation();
+  el.setPointerCapture(e.pointerId);el.classList.add('dragging');
+  document.getElementById('trash-zone').classList.add('visible');
+  const food=plateContents[pi].foods[fi];
+  const maxZ=Math.max(2,...plateContents[pi].foods.map(f=>f.z||2));
+  food.z=maxZ+1;el.style.zIndex=food.z;
+  const rect=el.parentElement.getBoundingClientRect();
+  dragState={type:'plate',pi,fi,el,rect,sx:e.clientX,sy:e.clientY,ox:food.x,oy:food.y};
+  el.addEventListener('pointermove',onDrag);el.addEventListener('pointerup',onDragEnd);el.addEventListener('pointercancel',onDragEnd);
+}
+
+function startDragTray(e,fi,el){
+  if(!gameActive)return;e.preventDefault();e.stopPropagation();
+  el.setPointerCapture(e.pointerId);el.classList.add('dragging');
+  document.getElementById('trash-zone').classList.add('visible');
+  const food=trayFoods[fi];
+  const maxZ=Math.max(10,...trayFoods.map(f=>f.z||10));
+  food.z=maxZ+1;el.style.zIndex=food.z;
+  const rect=document.getElementById('tray').getBoundingClientRect();
+  dragState={type:'tray',fi,el,rect,sx:e.clientX,sy:e.clientY,ox:food.x,oy:food.y};
+  el.addEventListener('pointermove',onDrag);el.addEventListener('pointerup',onDragEnd);el.addEventListener('pointercancel',onDragEnd);
+}
+
+function onDrag(e){
+  if(!dragState)return;e.preventDefault();
+  const dx=e.clientX-dragState.sx,dy=e.clientY-dragState.sy;
+  const r=dragState.rect;
+  dragState.el.style.left=(dragState.ox+(dx/r.width)*100)+'%';
+  dragState.el.style.top=(dragState.oy+(dy/r.height)*100)+'%';
+  const tz=document.getElementById('trash-zone'),tr=tz.getBoundingClientRect();
+  if(e.clientY>=tr.top&&e.clientY<=tr.bottom&&e.clientX>=tr.left&&e.clientX<=tr.right){
+    tz.style.background='rgba(192,57,43,.35)';tz.style.borderColor='rgba(192,57,43,.8)';
+  }else{tz.style.background='';tz.style.borderColor=''}
+}
+
+function onDragEnd(e){
+  if(!dragState)return;e.preventDefault();
+  dragState.el.classList.remove('dragging');
+  dragState.el.removeEventListener('pointermove',onDrag);
+  dragState.el.removeEventListener('pointerup',onDragEnd);
+  dragState.el.removeEventListener('pointercancel',onDragEnd);
+  const tz=document.getElementById('trash-zone');
+  tz.classList.remove('visible');tz.style.background='';tz.style.borderColor='';
+  const tr=tz.getBoundingClientRect();
+  const inTrash=e.clientY>=tr.top&&e.clientY<=tr.bottom&&e.clientX>=tr.left&&e.clientX<=tr.right;
+
+  if(inTrash){
+    if(dragState.type==='plate'){
+      const rm=plateContents[dragState.pi].foods.splice(dragState.fi,1)[0];
+      undoStack.push({action:'removePlate',pi:dragState.pi,fi:dragState.fi,food:rm});
+    }else{
+      const rm=trayFoods.splice(dragState.fi,1)[0];
+      undoStack.push({action:'removeTray',fi:dragState.fi,food:rm});
+    }
+    renderTray();updateLiveScores();
+  }else{
+    const dx=e.clientX-dragState.sx,dy=e.clientY-dragState.sy;
+    const r=dragState.rect;
+    if(dragState.type==='plate'){
+      const f=plateContents[dragState.pi].foods[dragState.fi];
+      if(f){f.x=dragState.ox+(dx/r.width)*100;f.y=dragState.oy+(dy/r.height)*100}
+    }else{
+      const f=trayFoods[dragState.fi];
+      if(f){f.x=dragState.ox+(dx/r.width)*100;f.y=dragState.oy+(dy/r.height)*100}
+    }
+  }
+  dragState=null;
+}
+
+// ===== PLACE =====
+function onPlateClick(pi){
+  if(!selectedFood||!gameActive)return;
+  const plate=plateContents[pi];
+  if(!canPlace(selectedFood,plate.type)){
+    toast(`🚫 ${selectedFood.name}は器ごとトレイに置こう！`);return;
+  }
+  const max={main:8,side:6,dessert:5};
+  if(plate.foods.length>=(max[plate.type]||6))return;
+  const cx=45+(Math.random()-.5)*40,cy=42+(Math.random()-.5)*35;
+  const maxZ=Math.max(2,...plate.foods.map(f=>f.z||2));
+  plate.foods.push({...selectedFood,x:cx,y:cy,z:maxZ+1,fresh:true});
+  undoStack.push({action:'addPlate',pi,fi:plate.foods.length-1});
+  renderTray();updateLiveScores();
+}
+
+function undoLast(){
+  if(!gameActive||!undoStack.length)return;
+  const u=undoStack.pop();
+  if(u.action==='addPlate')plateContents[u.pi].foods.splice(u.fi,1);
+  else if(u.action==='removePlate')plateContents[u.pi].foods.splice(u.fi,0,u.food);
+  else if(u.action==='addTray')trayFoods.splice(u.fi,1);
+  else if(u.action==='removeTray')trayFoods.splice(u.fi,0,u.food);
+  renderTray();updateLiveScores();
+}
+
+// FOOD PANEL
+let currentCategory=null;
+function getAvailableCats(){
+  if(!currentStage||!currentStage.cats)return Object.keys(FOOD_DATA);
+  return currentStage.cats;
+}
+function renderFoodPanel(){
+  const cats=getAvailableCats();
+  if(!currentCategory||!cats.includes(currentCategory))currentCategory=cats[0];
+  document.getElementById('food-categories').innerHTML=cats.map(n=>
+    `<button class="cat-btn ${n===currentCategory?'active':''}" onclick="switchCategory('${n}')">${FOOD_DATA[n].emoji} ${n}</button>`
+  ).join('');renderFoodGrid();
+}
+function switchCategory(c){currentCategory=c;renderFoodPanel()}
+function renderFoodGrid(){
+  const items=FOOD_DATA[currentCategory].items;
+  document.getElementById('food-grid').innerHTML=items.map(item=>{
+    const sel=selectedFood&&selectedFood.emoji===item.emoji&&selectedFood.name===item.name;
+    const tag=item.vessel==='tray'?'器付':'';
+    return`<div class="food-item ${sel?'selected':''}" onclick='selectFood(${JSON.stringify(item).replace(/'/g,"&apos;")})'>
+      <span class="emoji">${item.emoji}</span>
+      <span class="fname">${item.name}</span>
+      ${tag?`<span class="vessel-tag">${tag}</span>`:''}
+    </div>`;
+  }).join('');
+}
+function selectFood(food){
+  selectedFood=food;
+  document.querySelectorAll('.plate').forEach(p=>{
+    const pi=Array.from(p.parentElement.children).indexOf(p);
+    const plate=plateContents[pi];
+    if(plate&&canPlace(food,plate.type))p.classList.add('highlight');
+    else p.classList.remove('highlight');
+  });
+  renderFoodGrid();
+}
+
+// SCORING
+function getAllFoods(){return[...plateContents.flatMap(p=>p.foods),...trayFoods]}
+function calculateScores(){
+  const all=getAllFoods();
+  if(!all.length)return{nutrition:0,beauty:0,time:0,total:0};
+  const groups={};all.forEach(f=>{groups[f.group]=(groups[f.group]||0)+1});
+
+  let ns=0;
+  if(groups.protein)ns+=25;if(groups.carb)ns+=20;if(groups.veggie)ns+=25;
+  if(groups.soup)ns+=15;if(groups.fruit)ns+=15;
+  const dd=(groups.dessert||0)+(groups.drink||0);
+  if(dd>3)ns-=(dd-3)*4;
+  if(Object.keys(groups).length>=4)ns+=10;
+  if(Object.keys(groups).length>=6)ns+=5;
+  ns=Math.max(0,Math.min(100,ns));
+
+  let bs=0;
+  const colors=new Set(all.map(f=>f.color));
+  bs+=Math.min(28,colors.size*7);
+  bs+=Math.round((all.reduce((s,f)=>s+f.beauty,0)/all.length)*7);
+  const usedPlates=plateContents.filter(p=>p.foods.length>0).length;
+  bs+=usedPlates*6;
+  if(trayFoods.length>0)bs+=4;
+  plateContents.forEach(p=>{if(p.foods.length>6)bs-=(p.foods.length-6)*4});
+  if(all.length>=5&&all.length<=18)bs+=10;
+  const uniq=new Set(all.map(f=>f.emoji)).size;
+  if(uniq>=6)bs+=8;if(uniq>=10)bs+=5;
+  bs=Math.max(0,Math.min(100,bs));
+
+  const ratio=(currentStage.time-timeLeft)/currentStage.time;
+  let ts=ratio<=.5?100:ratio<=.75?80:ratio<=.9?60:40;
+  if(timeLeft>0&&all.length>=4)ts+=10;
+  ts=Math.min(100,ts);
+
+  return{nutrition:ns,beauty:bs,time:ts,total:Math.round(ns*.35+bs*.40+ts*.25)};
+}
+function updateLiveScores(){const s=calculateScores();document.getElementById('live-nutrition').textContent=s.nutrition;document.getElementById('live-beauty').textContent=s.beauty}
+function getRank(t){return t>=95?'SSS':t>=85?'SS':t>=75?'S':t>=60?'A':t>=45?'B':'C'}
+function getComment(r){return({SSS:'✨ 完璧！あなたこそバイキング王！ ✨\nプロのフードコーディネーターも脱帽。',SS:'🏆 素晴らしい！ほぼ完璧な仕上がり！',S:'👏 見事！バランス感覚が光ってる。',A:'😊 なかなか！彩りを意識するとさらに◎',B:'🙂 まずまず！野菜も忘れずに。',C:'😅 もうちょっと！色んな料理を盛ろう。'})[r]||''}
+
+function finishGame(){
+  gameActive=false;clearInterval(timerInterval);
+  const scores=calculateScores(),rank=getRank(scores.total);
+  const passed=scores.total>=60; // A rank or above
+  const isLast=currentStage.id===STAGES.length;
+
+  // Unlock next stage
+  if(passed&&currentStage.id>=unlockedStage){
+    unlockedStage=currentStage.id+1;
+    localStorage.setItem('viking_unlock',unlockedStage);
+  }
+
+  // If cleared final stage, show ending
+  if(passed&&isLast){
+    showEnding(scores,rank);return;
+  }
+
+  // Clone the actual tray into result
+  const wrapper=document.getElementById('result-tray-wrapper');
+  wrapper.innerHTML='';
+  const origTray=document.getElementById('tray');
+  const clone=origTray.cloneNode(true);
+  clone.classList.add('tray-clone');
+  clone.querySelectorAll('.highlight').forEach(el=>el.classList.remove('highlight'));
+  clone.querySelectorAll('.food-place-anim').forEach(el=>el.classList.remove('food-place-anim'));
+  const origW=origTray.offsetWidth;
+  const origH=origTray.offsetHeight;
+  clone.style.position='relative';
+  clone.onclick=null;
+  wrapper.appendChild(clone);
+
+  document.getElementById('result-rank').textContent=rank;
+  document.getElementById('result-scores').innerHTML=[
+    {label:'栄養',value:scores.nutrition,cls:'nutrition'},
+    {label:'美しさ',value:scores.beauty,cls:'beauty'},
+    {label:'タイム',value:scores.time,cls:'time-bar'},
+  ].map(s=>`<div class="result-score-item"><div class="rs-label">${s.label}</div><div class="rs-bar-bg"><div class="rs-bar ${s.cls}" style="width:0%"></div></div><div class="rs-value">${s.value}</div></div>`).join('');
+  document.getElementById('result-total').textContent=`TOTAL: ${scores.total}`;
+
+  if(passed){
+    const next=STAGES.find(s=>s.id===currentStage.id+1);
+    document.getElementById('result-comment').textContent=`🎉 クリア！ ${next?next.name+'へ進めるぞ！':''}`;
+    cachedShareBlob=null;cachedShareFilename='';cachedShareText='';
+    document.getElementById('result-btns').innerHTML=`
+      <div class="share-row">
+        <button class="share-btn share-x" onclick="shareTo('x')">𝕏</button>
+        <button class="share-btn share-ig" onclick="shareTo('ig')">Instagram</button>
+        <button class="share-btn share-line" onclick="shareTo('line')">LINE</button>
+        <button class="share-btn share-fb" onclick="shareTo('fb')">Facebook</button>
+      </div>
+      <div class="share-row">
+        <button class="share-btn share-save" onclick="shareTo('save')">💾 画像保存</button>
+        <button class="share-btn share-copy" onclick="shareTo('copy')">📋 コピー</button>
+      </div>
+      <button class="result-btn" onclick="retryStage()">RETRY</button>
+      ${next?`<button class="result-btn primary" onclick="goStage(${next.id})">NEXT ▶ ${next.name} ${next.emoji}</button>`
+            :`<button class="result-btn primary" onclick="goTitle()">MENU</button>`}`;
+  }else{
+    document.getElementById('result-comment').textContent=getComment(rank)+'\nAランク以上でクリア！';
+    document.getElementById('result-btns').innerHTML=`
+      <button class="result-btn" onclick="goTitle()">MENU</button>
+      <button class="result-btn primary" onclick="retryStage()">RETRY</button>`;
+  }
+
+  document.getElementById('result-screen').classList.add('active');
+  requestAnimationFrame(()=>{
+    const targetW=wrapper.clientWidth||280;
+    const scale=targetW/origW;
+    clone.style.width=origW+'px';
+    clone.style.height=origH+'px';
+    clone.style.transform=`scale(${scale})`;
+    clone.style.transformOrigin='top left';
+    wrapper.style.height=Math.round(origH*scale)+'px';
+  });
+  setTimeout(()=>{document.querySelectorAll('.rs-bar').forEach((b,i)=>{b.style.width=[scores.nutrition,scores.beauty,scores.time][i]+'%'})},300);
+}
+
+function showEnding(scores,rank){
+  document.getElementById('game-screen').classList.remove('active');
+  const el=document.getElementById('ending-screen');
+  el.innerHTML=`
+    <div style="text-align:center;padding:40px 20px;max-width:480px;margin:0 auto">
+      <div style="font-size:5rem;margin-bottom:16px">👑</div>
+      <div style="font-family:'Playfair Display',serif;font-size:2.8rem;color:var(--gold);font-weight:900;text-shadow:0 0 40px rgba(200,164,86,.6)">VIKING KING</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--gold-light);letter-spacing:.2em;margin:8px 0 24px;opacity:.8">ALL STAGES CLEARED</div>
+      <div style="font-size:1rem;color:var(--cream);line-height:1.8;margin-bottom:32px">
+        全ステージ制覇おめでとう！<br>
+        あなたの盛り付けセンスは<br>
+        まさにバイキング王の名にふさわしい。<br><br>
+        🏫→🏢→🏨→🏙️→🌴→🎰<br>
+        <span style="color:var(--gold)">最終スコア: ${scores.total}点 (${rank})</span>
+      </div>
+      <div style="font-size:3rem;margin:20px 0">🍽️✨🥂🎉👑</div>
+      <button class="result-btn primary" onclick="resetGame()" style="margin-top:24px;padding:14px 36px;font-size:1.2rem">最初からプレイ</button>
+      <br><button class="result-btn" onclick="goTitle()" style="margin-top:12px">MENU</button>
+    </div>`;
+  el.classList.add('active');
+}
+
+function resetGame(){
+  unlockedStage=1;localStorage.setItem('viking_unlock','1');
+  document.getElementById('ending-screen').classList.remove('active');
+  document.getElementById('result-screen').classList.remove('active');
+  document.getElementById('game-screen').classList.remove('active');
+  document.getElementById('title-screen').classList.remove('hidden');
+  renderStageSelect();
+}
+
+document.getElementById('done-btn').onclick=()=>{if(gameActive)finishGame()};
+function goTitle(){document.getElementById('ending-screen').classList.remove('active');document.getElementById('result-screen').classList.remove('active');document.getElementById('game-screen').classList.remove('active');document.getElementById('title-screen').classList.remove('hidden');clearInterval(timerInterval);renderStageSelect()}
+function retryStage(){document.getElementById('result-screen').classList.remove('active');document.getElementById('game-screen').classList.remove('active');startStage(currentStage.id)}
+function goStage(id){document.getElementById('result-screen').classList.remove('active');document.getElementById('game-screen').classList.remove('active');startStage(id)}
+
+// ===== SHARE =====
+let cachedShareBlob=null;
+let cachedShareFilename='';
+let cachedShareText='';
+
+async function generateShareImage(){
+  if(cachedShareBlob)return{blob:cachedShareBlob,filename:cachedShareFilename,text:cachedShareText};
+
+  const trayEl=document.getElementById('tray');
+  const trayCanvas=await html2canvas(trayEl,{
+    backgroundColor:'#1A1410',
+    scale:2,
+    useCORS:true
+  });
+
+  const outW=1200;
+  const padding=40;
+  const headerH=120;
+  const footerH=120;
+  const trayAspect=trayCanvas.height/trayCanvas.width;
+  const trayDrawW=outW-padding*2;
+  const trayDrawH=Math.round(trayDrawW*trayAspect);
+  const outH=headerH+trayDrawH+footerH;
+
+  const canvas=document.createElement('canvas');
+  canvas.width=outW;canvas.height=outH;
+  const ctx=canvas.getContext('2d');
+
+  ctx.fillStyle='#1A1410';
+  ctx.fillRect(0,0,outW,outH);
+
+  ctx.textAlign='center';
+  ctx.fillStyle='#C8A456';
+  ctx.font='bold 42px "Playfair Display", serif';
+  ctx.fillText('🍽️ THE BEAUTIFUL VIKING',outW/2,60);
+  ctx.font='24px "Bebas Neue", sans-serif';
+  ctx.fillStyle='#E8D5A0';
+  ctx.fillText(`STAGE ${currentStage.id} · ${currentStage.name} ${currentStage.emoji}`,outW/2,100);
+
+  ctx.drawImage(trayCanvas,padding,headerH,trayDrawW,trayDrawH);
+
+  const scores=calculateScores();
+  const rank=getRank(scores.total);
+  const footerY=headerH+trayDrawH;
+
+  ctx.fillStyle='#C8A456';
+  ctx.font='bold 48px "Bebas Neue", sans-serif';
+  ctx.textAlign='left';
+  ctx.fillText(`RANK: ${rank}`,padding,footerY+55);
+  ctx.textAlign='right';
+  ctx.fillText(`TOTAL: ${scores.total}`,outW-padding,footerY+55);
+
+  ctx.textAlign='center';
+  ctx.font='22px "Noto Sans JP", sans-serif';
+  ctx.fillStyle='#E8D5A0';
+  ctx.fillText(`栄養 ${scores.nutrition}  /  美しさ ${scores.beauty}  /  ⏱ ${scores.time}`,outW/2,footerY+100);
+
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+  const filename=`viking-stage${currentStage.id}-rank-${rank}.png`;
+  const text=`🍽️ THE BEAUTIFUL VIKING\nSTAGE ${currentStage.id} ${currentStage.name} - RANK ${rank} (${scores.total}点)\n#TheBeautifulViking`;
+
+  cachedShareBlob=blob;
+  cachedShareFilename=filename;
+  cachedShareText=text;
+  return{blob,filename,text};
+}
+
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function setShareBtnsDisabled(disabled){
+  document.querySelectorAll('.share-btn').forEach(b=>b.disabled=disabled);
+}
+
+async function shareTo(platform){
+  const btn=event.currentTarget;
+  const originalText=btn.textContent;
+  btn.textContent='処理中...';
+  setShareBtnsDisabled(true);
+
+  try{
+    const{blob,filename,text}=await generateShareImage();
+    const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    switch(platform){
+      case 'x':{
+        downloadBlob(blob,filename);
+        const xText=encodeURIComponent(text);
+        window.open(`https://x.com/intent/post?text=${xText}`,'_blank');
+        btn.textContent='✅ 画像を保存済み';
+        setTimeout(()=>{btn.textContent=originalText},3000);
+        break;
+      }
+      case 'ig':{
+        if(isMobile&&navigator.canShare){
+          const file=new File([blob],filename,{type:'image/png'});
+          try{
+            await navigator.share({files:[file],title:'THE BEAUTIFUL VIKING',text});
+          }catch(e){/* cancelled */}
+        }else{
+          downloadBlob(blob,filename);
+          btn.textContent='📷 保存済！IGアプリへ';
+          setTimeout(()=>{btn.textContent=originalText},3000);
+        }
+        break;
+      }
+      case 'line':{
+        downloadBlob(blob,filename);
+        const lineText=encodeURIComponent(text);
+        if(isMobile){
+          window.open(`https://line.me/R/share?text=${lineText}`,'_blank');
+        }else{
+          window.open(`https://social-plugins.line.me/lineit/share?text=${lineText}`,'_blank');
+        }
+        btn.textContent='✅ 画像を保存済み';
+        setTimeout(()=>{btn.textContent=originalText},3000);
+        break;
+      }
+      case 'fb':{
+        downloadBlob(blob,filename);
+        const fbText=encodeURIComponent(text);
+        window.open(`https://www.facebook.com/sharer/sharer.php?quote=${fbText}`,'_blank');
+        btn.textContent='✅ 画像を保存済み';
+        setTimeout(()=>{btn.textContent=originalText},3000);
+        break;
+      }
+      case 'save':{
+        downloadBlob(blob,filename);
+        btn.textContent='✅ 保存しました';
+        setTimeout(()=>{btn.textContent=originalText},3000);
+        break;
+      }
+      case 'copy':{
+        try{
+          await navigator.clipboard.write([
+            new ClipboardItem({'image/png':blob})
+          ]);
+          btn.textContent='✅ コピーしました';
+        }catch(e){
+          downloadBlob(blob,filename);
+          btn.textContent='✅ 保存しました';
+        }
+        setTimeout(()=>{btn.textContent=originalText},3000);
+        break;
+      }
+    }
+  }catch(e){
+    console.error('Share error:',e);
+    btn.textContent=originalText;
+  }finally{
+    setShareBtnsDisabled(false);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
